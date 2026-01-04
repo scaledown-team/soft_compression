@@ -5,6 +5,9 @@ This guide shows how to train ScaleDown on real QA data with automatic before/af
 ### 🎯 TL;DR - One Command
 
 ```bash
+# First time: Install dependencies (no package installation!)
+pip install -r requirements.txt
+
 # Download real data (500 examples from SQuAD)
 python prepare_small_real_dataset.py --dataset squad --num_examples 500
 

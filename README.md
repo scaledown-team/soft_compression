@@ -38,33 +38,41 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed comparison.
 
 ## Installation
 
-### For GPU Training
+**No package installation needed!** This is research code - just install dependencies and run.
+
+### Quick Setup
 
 ```bash
 # Clone repository
 git clone <repo-url>
 cd soft_compression
 
-# Install dependencies
-pip install torch transformers peft accelerate
-pip install datasets tqdm wandb  # Optional
+# Install dependencies (that's it!)
+pip install torch>=2.0.0 transformers>=4.40.0 peft>=0.10.0 accelerate>=0.27.0
+pip install datasets>=2.14.0 tqdm>=4.65.0 numpy>=1.24.0 matplotlib>=3.7.0
 
-# Install package
-pip install -e .
+# Optional: For dataset generation
+pip install sentence-transformers>=2.3.0 requests>=2.31.0 bitsandbytes>=0.42.0
+
+# Run directly (no pip install -e . needed)
+python test_training.py --test_both
 ```
 
-### For AWS Trainium Training
+**Or use requirements.txt:**
 
 ```bash
-# On Trn1 instance, install Neuron SDK
-pip install torch-neuronx neuronx-cc --extra-index-url https://pip.repos.neuron.amazonaws.com
-
-# Install other dependencies
-pip install transformers peft accelerate datasets tqdm
-
-# Install package
-pip install -e .
+pip install -r requirements.txt
 ```
+
+### For AWS Trainium
+
+```bash
+# On Trn1 instance
+pip install torch-neuronx neuronx-cc --extra-index-url https://pip.repos.neuron.amazonaws.com
+pip install -r requirements.txt
+```
+
+**See [INSTALL.md](./INSTALL.md) for details and troubleshooting.**
 
 ---
 

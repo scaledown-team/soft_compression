@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import get_linear_schedule_with_warmup
+from tranformers import get_linear_schedule_with_warmup
 from tqdm import tqdm
 from typing import Optional, Dict
 import logging
@@ -92,6 +92,7 @@ class ScaleDownTrainer:
         elif self.config.device_type == "trainium":
             try:
                 import torch_neuronx  # noqa: F401
+
                 device = torch.device("xla")
                 logger.info("Using AWS Trainium with XLA")
                 return device
@@ -106,6 +107,7 @@ class ScaleDownTrainer:
         """Setup Trainium-specific configurations."""
         try:
             import torch_xla.core.xla_model as xm
+
             self.xm = xm
             logger.info("Trainium XLA model loaded")
         except ImportError:
@@ -180,15 +182,17 @@ class ScaleDownTrainer:
 
             for step, batch in enumerate(progress_bar):
                 # Move batch to device
-                batch = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v
-                         for k, v in batch.items()}
+                batch = {
+                    k: v.to(self.device) if isinstance(v, torch.Tensor) else v
+                    for k, v in batch.items()
+                }
 
                 # Forward pass
                 if self.config.device_type == "gpu" and self.scaler is not None:
                     # Mixed precision training on GPU
                     with torch.cuda.amp.autocast(
                         enabled=True,
-                        dtype=torch.bfloat16 if self.config.use_bf16 else torch.float16
+                        dtype=torch.bfloat16 if self.config.use_bf16 else torch.float16,
                     ):
                         outputs = self.model(**batch)
                         loss = outputs["loss"]
@@ -207,8 +211,7 @@ class ScaleDownTrainer:
                     self.scaler.unscale_(self.optimizer)
 
                 torch.nn.utils.clip_grad_norm_(
-                    self.model.parameters(),
-                    self.config.max_grad_norm
+                    self.model.parameters(), self.config.max_grad_norm
                 )
 
                 # Optimizer step
@@ -238,12 +241,16 @@ class ScaleDownTrainer:
                     avg_gen_loss = total_gen_loss / 100
                     avg_rr_loss = total_rr_loss / 100 if total_rr_loss > 0 else 0
 
-                    progress_bar.set_postfix({
-                        "loss": f"{avg_loss:.4f}",
-                        "gen_loss": f"{avg_gen_loss:.4f}",
-                        "rr_loss": f"{avg_rr_loss:.4f}" if avg_rr_loss > 0 else "N/A",
-                        "lr": f"{self.scheduler.get_last_lr()[0]:.2e}",
-                    })
+                    progress_bar.set_postfix(
+                        {
+                            "loss": f"{avg_loss:.4f}",
+                            "gen_loss": f"{avg_gen_loss:.4f}",
+                            "rr_loss": f"{avg_rr_loss:.4f}"
+                            if avg_rr_loss > 0
+                            else "N/A",
+                            "lr": f"{self.scheduler.get_last_lr()[0]:.2e}",
+                        }
+                    )
 
                     total_loss = 0
                     total_gen_loss = 0
@@ -282,8 +289,10 @@ class ScaleDownTrainer:
 
         with torch.no_grad():
             for batch in tqdm(eval_loader, desc="Evaluating"):
-                batch = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v
-                         for k, v in batch.items()}
+                batch = {
+                    k: v.to(self.device) if isinstance(v, torch.Tensor) else v
+                    for k, v in batch.items()
+                }
 
                 outputs = self.model(**batch)
 
@@ -318,9 +327,12 @@ class ScaleDownTrainer:
         self.model.save_pretrained(str(checkpoint_dir))
 
         # Save optimizer and scheduler
-        torch.save({
-            "optimizer": self.optimizer.state_dict(),
-            "scheduler": self.scheduler.state_dict(),
-        }, checkpoint_dir / "training_state.pt")
+        torch.save(
+            {
+                "optimizer": self.optimizer.state_dict(),
+                "scheduler": self.scheduler.state_dict(),
+            },
+            checkpoint_dir / "training_state.pt",
+        )
 
         logger.info(f"Checkpoint saved successfully")

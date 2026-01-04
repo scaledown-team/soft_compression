@@ -15,10 +15,14 @@ Usage:
     python test_training.py --test_both
 """
 
+# Add current directory to path (no package installation needed)
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import argparse
 import json
 import torch
-from pathlib import Path
 
 from scaledown import ScaleDownConfig, ScaleDownModel
 from scaledown.data import ScaleDownDataset
