@@ -49,7 +49,16 @@ class ScaleDownDataset(Dataset):
             compressor_tokenizer = AutoTokenizer.from_pretrained(
                 config.modernbert_model_name
             )
+            # Set pad token if not already set (ModernBERT doesn't have one by default)
+            if compressor_tokenizer.pad_token is None:
+                compressor_tokenizer.pad_token = compressor_tokenizer.eos_token
+                logger.info(f"Set pad_token to eos_token for ModernBERT tokenizer")
         self.compressor_tokenizer = compressor_tokenizer or tokenizer
+
+        # Ensure generator tokenizer also has pad token
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+            logger.info(f"Set pad_token to eos_token for generator tokenizer")
 
         # Add special tokens for memory and reranking
         self.memory_tokens = [f"<MEM_{i}>" for i in range(config.num_memory_tokens)]

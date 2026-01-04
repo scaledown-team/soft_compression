@@ -69,22 +69,31 @@ class NLayersCompressor(ScaleDownCompressor):
         # Get model architecture
         model_config = generator_model.config
 
+        # Handle PEFT-wrapped models (LoRA)
+        # If the generator is wrapped with PEFT, unwrap it to access the base model
+        if hasattr(generator_model, 'base_model'):
+            # PEFT-wrapped model: access base_model.model.embed_tokens
+            base_model = generator_model.base_model.model
+        else:
+            # Regular model: access model.embed_tokens
+            base_model = generator_model
+
         # Create a shallow copy of the model with only first N layers
-        self.embedding = generator_model.model.embed_tokens
+        self.embedding = base_model.model.embed_tokens
 
         # Extract first N layers
-        if hasattr(generator_model.model, 'layers'):
+        if hasattr(base_model.model, 'layers'):
             # For Mistral, Llama, Qwen, etc.
             self.layers = nn.ModuleList([
-                generator_model.model.layers[i] for i in range(self.num_layers)
+                base_model.model.layers[i] for i in range(self.num_layers)
             ])
         else:
             raise ValueError(
-                f"Generator model type {type(generator_model)} not supported. "
+                f"Generator model type {type(base_model)} not supported. "
                 "Expected model.layers attribute."
             )
 
-        self.norm = generator_model.model.norm
+        self.norm = base_model.model.norm
 
         # Reranking head (optional)
         self.enable_reranking = config.enable_reranking

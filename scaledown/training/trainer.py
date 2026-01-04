@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
-from tranformers import get_linear_schedule_with_warmup
+from transformers import get_linear_schedule_with_warmup
 from tqdm import tqdm
 from typing import Optional, Dict
 import logging

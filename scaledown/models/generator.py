@@ -140,7 +140,13 @@ class ScaleDownGenerator(nn.Module):
         batch_size = query_input_ids.shape[0]
 
         # Get query embeddings
-        query_embeddings = self.model.model.embed_tokens(query_input_ids)
+        # Handle PEFT-wrapped models
+        if hasattr(self.model, 'base_model'):
+            embed_tokens = self.model.base_model.model.model.embed_tokens
+        else:
+            embed_tokens = self.model.model.embed_tokens
+
+        query_embeddings = embed_tokens(query_input_ids)
         # [batch_size, query_len, hidden_size]
 
         # Concatenate query embeddings with compressed document embeddings
@@ -196,7 +202,13 @@ class ScaleDownGenerator(nn.Module):
         batch_size = query_input_ids.shape[0]
 
         # Get query embeddings
-        query_embeddings = self.model.model.embed_tokens(query_input_ids)
+        # Handle PEFT-wrapped models
+        if hasattr(self.model, 'base_model'):
+            embed_tokens = self.model.base_model.model.model.embed_tokens
+        else:
+            embed_tokens = self.model.model.embed_tokens
+
+        query_embeddings = embed_tokens(query_input_ids)
 
         # Concatenate with compressed embeddings
         inputs_embeds = torch.cat([query_embeddings, compressed_embeddings], dim=1)
