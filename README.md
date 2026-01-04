@@ -1,6 +1,6 @@
 # ScaleDown: Online Soft Compression And Reranking
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/yourusername/scaledown/blob/main/ScaleDown_Colab.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/scaledown-team/soft_compression/blob/main/ScaleDown_Colab.ipynb)
 
 **ScaleDown** is an implementation of the OSCAR paper ([arXiv:2504.07109v1](https://arxiv.org/abs/2504.07109)) with support for both GPU and AWS Trainium training, and a novel ModernBERT compressor variant.
 
