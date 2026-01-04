@@ -1,6 +1,10 @@
 # ScaleDown: Online Soft Compression And Reranking
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/yourusername/scaledown/blob/main/ScaleDown_Colab.ipynb)
+
 **ScaleDown** is an implementation of the OSCAR paper ([arXiv:2504.07109v1](https://arxiv.org/abs/2504.07109)) with support for both GPU and AWS Trainium training, and a novel ModernBERT compressor variant.
+
+> **🚀 Try it now**: Click the Colab badge above or see [COLAB_GUIDE.md](./COLAB_GUIDE.md) for a 5-minute demo!
 
 ## Overview
 
@@ -66,11 +70,31 @@ pip install -e .
 
 ## Quick Start
 
-> **⚡ First time?** Run the test script to verify your setup:
-> ```bash
-> python test_training.py --test_both
-> ```
-> See [TESTING.md](./TESTING.md) for detailed testing instructions.
+> **⚡ First time?** Choose your path:
+> - **Test setup**: `python test_training.py --test_both` ([TESTING.md](./TESTING.md))
+> - **Train on real data**: See [REAL_DATA_TRAINING.md](./REAL_DATA_TRAINING.md) (30 min)
+> - **Try in Colab**: Click the badge above ([COLAB_GUIDE.md](./COLAB_GUIDE.md))
+
+### Quick Training with Real Data (Recommended)
+
+```bash
+# 1. Get real QA data (500 examples from SQuAD)
+python prepare_small_real_dataset.py --dataset squad --num_examples 500
+
+# 2. Train with before/after evaluation and plots
+python train_with_evaluation.py --train_data small_real_dataset.json
+```
+
+**What you get:**
+- ✅ Model trained on real data (30 minutes on GPU)
+- ✅ Before/after metrics comparison (EM, F1, ROUGE)
+- ✅ Training curves plot
+- ✅ Inference speed comparison
+- ✅ Comprehensive report
+
+See [REAL_DATA_TRAINING.md](./REAL_DATA_TRAINING.md) for details.
+
+### Manual Training Workflow
 
 ### 1. Prepare Data
 
