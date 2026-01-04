@@ -104,6 +104,47 @@ class NLayersCompressor(ScaleDownCompressor):
         # Store hidden size
         self.hidden_size = model_config.hidden_size
 
+    def _prepare_decoder_attention_mask(
+        self, attention_mask, input_shape, hidden_states
+    ):
+        """
+        Prepare causal attention mask for decoder.
+        Converts 2D attention mask to 4D causal mask.
+        """
+        batch_size, seq_len = input_shape
+        dtype = hidden_states.dtype
+        device = hidden_states.device
+
+        # Create causal mask [seq_len, seq_len]
+        causal_mask = torch.triu(
+            torch.ones((seq_len, seq_len), dtype=torch.bool, device=device),
+            diagonal=1,
+        )
+
+        # Expand to [batch_size, 1, seq_len, seq_len]
+        causal_mask = causal_mask.unsqueeze(0).unsqueeze(0)
+        causal_mask = causal_mask.expand(batch_size, 1, seq_len, seq_len)
+
+        # Combine with attention mask if provided
+        if attention_mask is not None:
+            # attention_mask: [batch_size, seq_len]
+            # Expand to [batch_size, 1, 1, seq_len]
+            expanded_mask = attention_mask.unsqueeze(1).unsqueeze(2)
+            # Expand to [batch_size, 1, seq_len, seq_len]
+            expanded_mask = expanded_mask.expand(batch_size, 1, seq_len, seq_len)
+            # Combine: mask out both causal positions and padding
+            causal_mask = causal_mask | ~expanded_mask.bool()
+
+        # Convert bool mask to float mask with -inf for masked positions
+        # Mistral uses additive attention mask
+        mask_value = torch.finfo(dtype).min
+        attention_mask_4d = torch.zeros(
+            (batch_size, 1, seq_len, seq_len), dtype=dtype, device=device
+        )
+        attention_mask_4d = attention_mask_4d.masked_fill(causal_mask, mask_value)
+
+        return attention_mask_4d
+
     def forward(
         self,
         input_ids: torch.Tensor,
@@ -125,29 +166,34 @@ class NLayersCompressor(ScaleDownCompressor):
             reranking_scores: [batch_size] if reranking enabled
         """
         batch_size = input_ids.shape[0]
+        seq_len = input_ids.shape[1]
 
         # Embedding layer
         hidden_states = self.embedding(input_ids)
 
-        # Create causal mask (for decoder-only models)
-        seq_len = input_ids.shape[1]
-        causal_mask = torch.triu(
-            torch.ones(seq_len, seq_len, device=input_ids.device),
-            diagonal=1
-        ).bool()
-        causal_mask = causal_mask.unsqueeze(0).unsqueeze(0)  # [1, 1, seq_len, seq_len]
-
-        # Combine with attention mask
+        # Prepare attention mask in the format expected by Mistral
+        # Mistral expects 4D mask: [batch_size, 1, seq_len, seq_len] or None
         if attention_mask is not None:
-            attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)  # [batch, 1, 1, seq_len]
-            attention_mask = attention_mask.expand(-1, -1, seq_len, -1)
-            causal_mask = causal_mask | (~attention_mask.bool())
+            # Convert 2D attention mask to 4D causal mask
+            # attention_mask: [batch_size, seq_len]
+            attention_mask_4d = self._prepare_decoder_attention_mask(
+                attention_mask, (batch_size, seq_len), hidden_states
+            )
+        else:
+            attention_mask_4d = None
+
+        # Create position IDs for rotary embeddings
+        position_ids = torch.arange(
+            0, seq_len, dtype=torch.long, device=input_ids.device
+        )
+        position_ids = position_ids.unsqueeze(0).expand(batch_size, -1)
 
         # Pass through first N layers
         for layer in self.layers:
             layer_outputs = layer(
                 hidden_states,
-                attention_mask=~causal_mask if causal_mask is not None else None,
+                attention_mask=attention_mask_4d,
+                position_ids=position_ids,
             )
             hidden_states = layer_outputs[0]
 
@@ -209,6 +255,17 @@ class ModernBERTCompressor(ScaleDownCompressor):
         if config.device_type == "trainium":
             model_kwargs["torch_dtype"] = torch.float32
             logger.info("Loading ModernBERT in FP32 for Trainium (XLA will optimize)")
+
+        # Use device_map="auto" to handle memory more efficiently
+        # This prevents loading both models on GPU simultaneously
+        if config.device_type == "gpu":
+            # Load on CPU first, trainer will move to GPU
+            model_kwargs["device_map"] = None
+            model_kwargs["low_cpu_mem_usage"] = True
+            logger.info(
+                "Loading ModernBERT on CPU first "
+                "(will be moved to GPU by trainer)"
+            )
 
         # Load ModernBERT
         self.encoder = AutoModel.from_pretrained(
