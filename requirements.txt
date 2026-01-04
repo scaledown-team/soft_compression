@@ -1,0 +1,31 @@
+# Core dependencies
+torch>=2.0.0
+transformers>=4.40.0
+peft>=0.10.0
+accelerate>=0.27.0
+
+# Data processing
+datasets>=2.14.0
+tokenizers>=0.15.0
+
+# Training utilities
+tqdm>=4.65.0
+numpy>=1.24.0
+
+# Dataset generation (for creating training data following OSCAR paper)
+sentence-transformers>=2.3.0  # For SPLADE embeddings
+requests>=2.31.0  # For downloading MS MARCO queries
+bitsandbytes>=0.42.0  # Optional: 8-bit quantization for teacher LLM
+
+# Optional: Logging and monitoring
+wandb>=0.16.0
+
+# Optional: For Trainium training (install on Trn1 instances)
+# torch-neuronx
+# neuronx-cc
+# Install with: pip install torch-neuronx neuronx-cc --extra-index-url https://pip.repos.neuron.amazonaws.com
+
+# Development
+pytest>=7.4.0
+black>=23.0.0
+flake8>=6.0.0
