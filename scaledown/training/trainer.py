@@ -122,26 +122,50 @@ class ScaleDownTrainer:
             - N-Layers compressor: 5e-5
             - ModernBERT compressor: 1e-4
         """
-        # Separate parameters
-        compressor_params = list(self.model.compressor.parameters())
-        generator_params = list(self.model.generator.parameters())
+        # Get all parameters from each module
+        compressor_params = set(self.model.compressor.parameters())
+        generator_params = set(self.model.generator.parameters())
 
-        optimizer_grouped_parameters = [
-            {
-                "params": compressor_params,
+        # For n_layers compressor, some parameters are shared (first N layers)
+        # We need to separate them to avoid duplicates in optimizer groups
+        shared_params = compressor_params & generator_params
+        compressor_only_params = compressor_params - shared_params
+        generator_only_params = generator_params - shared_params
+
+        # Create optimizer groups
+        optimizer_grouped_parameters = []
+
+        # Add compressor-only parameters (e.g., reranking head for n_layers)
+        if compressor_only_params:
+            optimizer_grouped_parameters.append({
+                "params": list(compressor_only_params),
                 "lr": self.config.learning_rate_compressor,
                 "weight_decay": self.config.weight_decay,
-            },
-            {
-                "params": generator_params,
+            })
+
+        # Add shared parameters (first N layers for n_layers compressor)
+        # These should use the compressor learning rate since they're being trained for compression
+        if shared_params:
+            optimizer_grouped_parameters.append({
+                "params": list(shared_params),
+                "lr": self.config.learning_rate_compressor,
+                "weight_decay": self.config.weight_decay,
+            })
+
+        # Add generator-only parameters (LoRA adapters for the rest of the layers)
+        if generator_only_params:
+            optimizer_grouped_parameters.append({
+                "params": list(generator_only_params),
                 "lr": self.config.learning_rate_generator,
                 "weight_decay": self.config.weight_decay,
-            },
-        ]
+            })
 
         optimizer = AdamW(optimizer_grouped_parameters)
 
         logger.info(f"Optimizer created:")
+        logger.info(f"  Compressor-only params: {sum(p.numel() for p in compressor_only_params):,}")
+        logger.info(f"  Shared params: {sum(p.numel() for p in shared_params):,}")
+        logger.info(f"  Generator-only params: {sum(p.numel() for p in generator_only_params):,}")
         logger.info(f"  Compressor LR: {self.config.learning_rate_compressor}")
         logger.info(f"  Generator LR: {self.config.learning_rate_generator}")
         logger.info(f"  Weight decay: {self.config.weight_decay}")

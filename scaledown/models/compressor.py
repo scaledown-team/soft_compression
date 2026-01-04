@@ -199,14 +199,30 @@ class ModernBERTCompressor(ScaleDownCompressor):
 
         logger.info(f"Loading ModernBERT model: {config.modernbert_model_name}")
 
+        # Prepare model loading kwargs with dtype configuration
+        model_kwargs = {
+            "trust_remote_code": True,
+            "torch_dtype": torch.bfloat16 if config.use_bf16 else torch.float32,
+        }
+
+        # For Trainium, load in float32 and XLA will handle optimization
+        if config.device_type == "trainium":
+            model_kwargs["torch_dtype"] = torch.float32
+            logger.info("Loading ModernBERT in FP32 for Trainium (XLA will optimize)")
+
         # Load ModernBERT
         self.encoder = AutoModel.from_pretrained(
             config.modernbert_model_name,
-            trust_remote_code=True
+            **model_kwargs
         )
 
         encoder_config = self.encoder.config
         self.encoder_hidden_size = encoder_config.hidden_size  # 768 for base
+
+        # Enable gradient checkpointing for memory efficiency
+        if config.gradient_checkpointing:
+            self.encoder.gradient_checkpointing_enable()
+            logger.info("Gradient checkpointing enabled for ModernBERT")
 
         # Projection layers to map encoder hidden space to generator hidden space
         generator_hidden_size = config.generator_hidden_size or 4096
@@ -229,6 +245,10 @@ class ModernBERTCompressor(ScaleDownCompressor):
             logger.info("Reranking head enabled")
 
         self.hidden_size = generator_hidden_size
+
+        # Log model size
+        total_params = sum(p.numel() for p in self.encoder.parameters())
+        logger.info(f"ModernBERT encoder parameters: {total_params:,}")
 
     def forward(
         self,
