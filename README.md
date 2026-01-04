@@ -5,6 +5,8 @@
 **ScaleDown** is an implementation of the OSCAR paper ([arXiv:2504.07109v1](https://arxiv.org/abs/2504.07109)) with support for both GPU and AWS Trainium training, and a novel ModernBERT compressor variant.
 
 > **🚀 Try it now**: Click the Colab badge above or see [COLAB_GUIDE.md](./COLAB_GUIDE.md) for a 5-minute demo!
+>
+> **📚 New here?** Start with [SUMMARY.md](./SUMMARY.md) for a complete overview!
 
 ## Overview
 
