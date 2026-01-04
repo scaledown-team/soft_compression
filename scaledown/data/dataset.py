@@ -118,15 +118,26 @@ class ScaleDownDataset(Dataset):
 
         for doc in documents:
             # Create document with memory tokens
-            # Format: [Document tokens] [MEM_1] [MEM_2] ... [MEM_l] [RR]?
+            # Format (as per OSCAR paper Section 3):
+            # [Query] [Document] [MEM_1] [MEM_2] ... [MEM_l] [RR]?
+            # This enables query-dependent online compression
 
-            # Tokenize document (leave space for memory tokens)
+            # Tokenize query for compressor
+            query_encoding_comp = self.compressor_tokenizer(
+                query,
+                add_special_tokens=False,
+            )
+            query_tokens = query_encoding_comp["input_ids"]
+
+            # Calculate available space for document after query, memory tokens, and RR
             max_doc_len = (
                 self.config.max_seq_length
+                - len(query_tokens)
                 - self.config.num_memory_tokens
                 - (1 if self.config.enable_reranking else 0)
             )
 
+            # Tokenize document
             doc_encoding = self.compressor_tokenizer(
                 doc,
                 max_length=max_doc_len,
@@ -136,6 +147,9 @@ class ScaleDownDataset(Dataset):
 
             # Get document token IDs
             doc_tokens = doc_encoding["input_ids"]
+
+            # Combine: query + document (query-dependent compression!)
+            doc_tokens = query_tokens + doc_tokens
 
             # Add memory tokens
             mem_token_ids = [

@@ -124,14 +124,14 @@ def test_dataset_creation(config: ScaleDownConfig, num_examples: int = 10):
         sample = dataset[0]
 
         # Check required fields
-        required_fields = ['query_input_ids', 'doc_input_ids', 'answer_input_ids']
+        required_fields = ['query_input_ids', 'doc_input_ids', 'labels']
         for field in required_fields:
             assert field in sample, f"Missing field: {field}"
 
         print("✓ Dataset returns correct format")
         print(f"  Query shape: {sample['query_input_ids'].shape}")
         print(f"  Doc shape: {sample['doc_input_ids'].shape}")
-        print(f"  Answer shape: {sample['answer_input_ids'].shape}")
+        print(f"  Labels shape: {sample['labels'].shape}")
 
         return True, dataset
 
@@ -182,17 +182,17 @@ def test_forward_pass(config: ScaleDownConfig, dataset: ScaleDownDataset):
                 query_attention_mask=batch['query_attention_mask'],
                 doc_input_ids=batch['doc_input_ids'],
                 doc_attention_mask=batch['doc_attention_mask'],
-                answer_input_ids=batch['answer_input_ids'],
-                answer_attention_mask=batch['answer_attention_mask'],
+                memory_token_positions=batch['memory_token_positions'],
+                labels=batch['labels'],
             )
 
         print("✓ Forward pass successful")
-        print(f"  Loss: {outputs.loss.item():.4f}")
+        print(f"  Loss: {outputs['loss'].item():.4f}")
 
         # Check output
-        assert outputs.loss is not None, "Loss not computed"
-        assert not torch.isnan(outputs.loss), "Loss is NaN"
-        assert outputs.loss > 0, "Loss is not positive"
+        assert outputs['loss'] is not None, "Loss not computed"
+        assert not torch.isnan(outputs['loss']), "Loss is NaN"
+        assert outputs['loss'] > 0, "Loss is not positive"
 
         print("✓ Loss is valid")
 

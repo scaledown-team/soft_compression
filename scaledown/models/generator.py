@@ -53,6 +53,13 @@ class ScaleDownGenerator(nn.Module):
             model_kwargs["torch_dtype"] = torch.float32
             logger.info("Loading model in FP32 for Trainium (XLA will optimize)")
 
+        # For GPU, load on CPU first to avoid OOM during initialization
+        # The trainer will move to GPU after full model is created
+        if config.device_type == "gpu":
+            model_kwargs["device_map"] = None  # Load on CPU first
+            model_kwargs["low_cpu_mem_usage"] = True
+            logger.info("Loading generator on CPU first (trainer will move to GPU)")
+
         self.model = AutoModelForCausalLM.from_pretrained(
             config.generator_model_name,
             **model_kwargs
@@ -80,9 +87,9 @@ class ScaleDownGenerator(nn.Module):
         # Get hidden size
         self.hidden_size = self.model.config.hidden_size
 
-        # Move to device
-        if config.device_type != "trainium":
-            self.model = self.model.to(self.device)
+        # Don't move to device here - let the trainer handle it
+        # This avoids loading multiple large models on GPU simultaneously
+        logger.info("Generator initialized on CPU (trainer will handle device placement)")
 
     def _setup_device(self, device_type: str):
         """
